@@ -1,0 +1,23 @@
+name: scansapp
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  camera: ^0.12.0+1
+  flutter:
+    sdk: flutter
+  hashlib: ^2.3.4
+  mqtt_client: ^10.11.11
+  udp: ^5.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
