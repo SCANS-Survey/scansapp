@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 import 'udpprot.dart';
+import 'mqttprot.dart';
 
 // https://pub.dev/packages/camera/example
 
@@ -12,6 +13,8 @@ void main() {
   // if (ok == false) {
   //   print('Network interface failed to connect');
   // }
+  // var prot = MQTTNetProt();
+  // prot.connect();
   runApp(const MainApp());
   // print('close network interface');
   // netInterface.closeNetwork();
