@@ -35,32 +35,41 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Align(
-            alignment: Alignment.center,
-            child: Text('Logger Buttons'),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return SettingsDialog(settingsService: settingsService);
-                  },
-                );
-              },
-            ),
-          ],
+      home: const HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Align(
+          alignment: Alignment.center,
+          child: Text('Logger Buttons'),
         ),
-        body: Expanded(
-          child: Container(
-            // height: 500,
-            color: Colors.black,
-            child: ScansButtons(),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return SettingsDialog(settingsService: settingsService);
+                },
+              );
+            },
           ),
+        ],
+      ),
+      body: Expanded(
+        child: Container(
+          // height: 500,
+          color: Colors.black,
+          child: ScansButtons(),
         ),
       ),
     );
