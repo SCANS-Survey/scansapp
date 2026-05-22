@@ -14,6 +14,7 @@ class UDPNetwork {
     // Get IP address and port from settings
     final udpAddr = settingsService.getIpAddress();
     final udpPort = settingsService.getPort();
+    final devName = settingsService.getDeviceName();
 
     var multicastEndpoint = Endpoint.multicast(
       InternetAddress(udpAddr),
@@ -22,7 +23,8 @@ class UDPNetwork {
 
     var sender = await UDP.bind(Endpoint.any());
 
-    var toSend = makeItem("TOPC", dataId);
+    var topic = "LoggerButton" + "/" + devName + " " + dataId;
+    var toSend = makeItem("TOPC", topic);
 
     await sender.send(toSend.asUint8List(), multicastEndpoint);
   }
