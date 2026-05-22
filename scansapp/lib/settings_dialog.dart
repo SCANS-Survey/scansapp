@@ -18,6 +18,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController _nameController;
   late TextEditingController _ipController;
   late TextEditingController _portController;
+  late bool _showCamera;
 
   @override
   void initState() {
@@ -29,6 +30,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _portController = TextEditingController(
       text: widget.settingsService.getPort().toString(),
     );
+    _showCamera = widget.settingsService.getShowCamera();
   }
 
   @override
@@ -59,6 +61,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     await widget.settingsService.setDeviceName(_nameController.text);
     await widget.settingsService.setIpAddress(_ipController.text);
     await widget.settingsService.setPort(portValue);
+    await widget.settingsService.setShowCamera(_showCamera);
 
     if (mounted) {
       Navigator.pop(context, true);
@@ -109,6 +112,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         _nameController.text = widget.settingsService.getDeviceName();
         _ipController.text = widget.settingsService.getIpAddress();
         _portController.text = widget.settingsService.getPort().toString();
+        _showCamera = widget.settingsService.getShowCamera();
         _showSuccessSnackBar('Settings reset to defaults');
       }
     }
@@ -244,6 +248,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     vertical: 10,
                   ),
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Show camera option
+              SwitchListTile(
+                title: const Text('Show camera'),
+                subtitle: const Text('Display rear camera preview at low resolution'),
+                value: _showCamera,
+                onChanged: (value) => setState(() => _showCamera = value),
               ),
               const SizedBox(height: 24),
 
