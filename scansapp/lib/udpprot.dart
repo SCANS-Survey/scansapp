@@ -3,14 +3,17 @@ import 'package:hashlib/hashlib.dart';
 import 'package:udp/udp.dart';
 import 'netprot.dart';
 import 'dart:typed_data';
+import 'settings_service.dart';
+import 'main.dart';
 
 class UDPNetwork {
-  var udpAddr = "230.0.0.0";
-  var udpPort = 4446;
   // final socket = RawDatagramSocket.bind(udpAddr, port);
   var crc32 = CRC32(CRC32Params.ieee);
 
   void sendData(String deviceId, String dataId, Object data) async {
+    // Get IP address and port from settings
+    final udpAddr = settingsService.getIpAddress();
+    final udpPort = settingsService.getPort();
 
     var multicastEndpoint = Endpoint.multicast(
       InternetAddress(udpAddr),
