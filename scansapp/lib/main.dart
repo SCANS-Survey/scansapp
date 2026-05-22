@@ -40,16 +40,35 @@ class MainApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late String _deviceName;
+
+  @override
+  void initState() {
+    super.initState();
+    _deviceName = settingsService.getDeviceName();
+  }
+
+  void _refreshDeviceName() {
+    setState(() {
+      _deviceName = settingsService.getDeviceName();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Align(
+        title: Align(
           alignment: Alignment.center,
-          child: Text('Logger Buttons'),
+          child: Text(_deviceName),
         ),
         actions: [
           IconButton(
@@ -60,7 +79,10 @@ class HomePage extends StatelessWidget {
                 builder: (BuildContext context) {
                   return SettingsDialog(settingsService: settingsService);
                 },
-              );
+              ).then((_) {
+                // Refresh device name after dialog closes
+                _refreshDeviceName();
+              });
             },
           ),
         ],
