@@ -3,12 +3,21 @@ import 'package:flutter/material.dart';
 
 import 'udpprot.dart';
 import 'mqttprot.dart';
+import 'settings_service.dart';
+import 'settings_dialog.dart';
 
 // https://pub.dev/packages/camera/example
 
 var netInterface = UDPNetwork();
+late SettingsService settingsService;
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize settings service
+  settingsService = SettingsService();
+  await settingsService.init();
+
   // bool ok = netInterface.initNetwork();
   // if (ok == false) {
   //   print('Network interface failed to connect');
@@ -28,10 +37,23 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: Align(
+          title: const Align(
             alignment: Alignment.center,
             child: Text('Logger Buttons'),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return SettingsDialog(settingsService: settingsService);
+                  },
+                );
+              },
+            ),
+          ],
         ),
         body: Expanded(
           child: Container(
