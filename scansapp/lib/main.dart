@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'mqttprot.dart';
@@ -94,10 +95,58 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _handleCameraFrame(CameraImage cameraImage) {
-    var imageData = cameraImage.planes;
-    var plane0 = imageData[1].bytes;
-    print('Camera frame received: ${plane0.length} bytes, ${cameraImage.width} x ${cameraImage.height}');
-    // TODO: Replace this with any additional processing needed.
+    try {
+      final pngBytes = _encodeCameraImageToPng(cameraImage);
+      debugPrint('Camera frame received: ${cameraImage.width} x ${cameraImage.height}, PNG ${pngBytes.length} bytes');
+      // pngBytes now contains the encoded PNG in memory.
+      // Use pngBytes for transmission, upload, or further processing.
+      final pngbytes = pngBytes.buffer;
+      netInterface.sendData('CameraFrame', '', pngbytes);
+    } catch (e, st) {
+      debugPrint('Failed to encode camera frame to PNG: $e\n$st');
+    }
+  }
+
+  Uint8List _encodeCameraImageToPng(CameraImage image) {
+    final rgbImage = _convertYuv420ToRgb(image);
+    return Uint8List.fromList(img.encodePng(rgbImage));
+  }
+
+  img.Image _convertYuv420ToRgb(CameraImage image) {
+    final width = image.width;
+    final height = image.height;
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+
+    final uvRowStride = uPlane.bytesPerRow;
+    final uvPixelStride = uPlane.bytesPerPixel ?? 1;
+    final yRowStride = yPlane.bytesPerRow;
+    final yPixelStride = yPlane.bytesPerPixel ?? 1;
+
+    final img.Image rgbImage = img.Image(width: width, height: height);
+
+    for (var y = 0; y < height; y++) {
+      final yRow = yRowStride * y;
+      final uvRow = uvRowStride * (y >> 1);
+
+      for (var x = 0; x < width; x++) {
+        final yIndex = yRow + x * yPixelStride;
+        final uvIndex = uvRow + (x >> 1) * uvPixelStride;
+
+        final yp = yPlane.bytes[yIndex] & 0xff;
+        final up = (uPlane.bytes[uvIndex] & 0xff) - 128;
+        final vp = (vPlane.bytes[uvIndex] & 0xff) - 128;
+
+        final r = (yp + 1.402 * vp).round().clamp(0, 255);
+        final g = (yp - 0.344136 * up - 0.714136 * vp).round().clamp(0, 255);
+        final b = (yp + 1.772 * up).round().clamp(0, 255);
+
+        rgbImage.setPixelRgba(x, y, r, g, b, 255);
+      }
+    }
+
+    return rgbImage;
   }
 
   @override
@@ -314,7 +363,7 @@ class ObsButton extends StatelessWidget {
 
   void _onPressed() {
     print('Button $title pressed');
-    netInterface.sendData('phoneapp', title, Null);
+    netInterface.sendData('LoggerButton',   title);
   }
 
   @override

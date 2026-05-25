@@ -10,7 +10,7 @@ class UDPNetwork {
   // final socket = RawDatagramSocket.bind(udpAddr, port);
   var crc32 = CRC32(CRC32Params.ieee);
 
-  void sendData(String deviceId, String dataId, Object data) async {
+  void sendData([String dataType = 'Default', String dataId = '', ByteBuffer? data]) async {
     // Get IP address and port from settings
     final udpAddr = settingsService.getIpAddress();
     final udpPort = settingsService.getPort();
@@ -23,8 +23,14 @@ class UDPNetwork {
 
     var sender = await UDP.bind(Endpoint.any());
 
-    var topic = "LoggerButton" + "/" + devName + " " + dataId;
-    var toSend = makeItem("TOPC", topic);
+    String topic;
+    if (dataId.isNotEmpty) {
+      topic = "$dataType/$devName $dataId";
+    } else {
+      topic = "$dataType/$devName";
+    }
+    var toSend = makeItem(topic, data);
+
 
     await sender.send(toSend.asUint8List(), multicastEndpoint);
   }
@@ -35,9 +41,9 @@ class UDPNetwork {
  * Would have to do something a bit different for non string data, particularly 
  * with regard to getting the CRC. 
  */
-  ByteBuffer makeItem(String name, String data) {
+  ByteBuffer makeItem(String data, [ByteBuffer? dataBuffer]) {
     var list = <int>[]; // this makes a list, rather than a set. big difference.
-    list.addAll(name.codeUnits);
+    list.addAll("TOPC".codeUnits);
 
     // add the length of the data
     int n = data.length;
@@ -54,9 +60,24 @@ class UDPNetwork {
     var hBytes = int32BigEndianBytes(h);
     list.addAll(hBytes);
 
+    if (dataBuffer != null) {
+      // add the length of the data
+      int n = dataBuffer.lengthInBytes;
+      var b3 = int32BigEndianBytes(n);
+      list.addAll("DATA".codeUnits);
+      list.addAll(b3);
+    }
+
     // convert the integer list toa uint8 list for transmission.
     List<int> lll = List.from(list);
     Uint8List asuint8 = Uint8List.fromList(lll);
+    if (dataBuffer != null) {
+      // add the data buffer to the end of the list.
+      asuint8 = Uint8List.fromList(asuint8 + dataBuffer.asUint8List());
+      var h2 = crc32.code(dataBuffer.asUint8List().toString());
+      var h2Bytes = int32BigEndianBytes(h2);
+      asuint8 = Uint8List.fromList(asuint8 + h2Bytes);
+    }
 
     return asuint8.buffer;
   }
