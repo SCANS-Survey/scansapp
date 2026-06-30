@@ -8,10 +8,11 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'mqttprot.dart';
 import 'settings_dialog.dart';
 import 'settings_service.dart';
-import 'udpprot.dart';
+// import 'udpprot.dart';
 
-var netInterface = UDPNetwork();
+// var netInterface = UDPNetwork();
 final settingsService = SettingsService();
+final mqttInterface = MQTTNetProt(settingsService);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,12 +20,22 @@ Future<void> main() async {
 
   List<CameraDescription> cameras = [];
   try {
+    print('*******************************      start MQTT');
+    // final  mqt = MQTTNetProt();
+    mqttInterface.connect();
+    print('*******************return from MQTT connect');
+
+  } catch (e) {
+    debugPrint('Failed to initialize MQTT: $e');
+  }
+  try {
     cameras = await availableCameras();
+    print('Available cameras: ${cameras.map((c) => c.name).join(', ')}');
   } catch (e) {
     debugPrint('Failed to initialize cameras: $e');
   }
 
-  runApp(MainApp(cameras: cameras));
+ runApp(MainApp(cameras: cameras));
 }
 
 class MainApp extends StatelessWidget {
@@ -84,6 +95,7 @@ class _HomePageState extends State<HomePage> {
     ).then((_) {
           // Refresh device name after dialog closes
           _refreshDeviceName();
+          mqttInterface.reconnect(); // Reconnect MQTT after settings change
         });
 
     if (mounted && result == true) {
@@ -97,18 +109,22 @@ class _HomePageState extends State<HomePage> {
   void _handleCameraFrame(CameraImage cameraImage) {
     try {
       final pngBytes = _encodeCameraImageToPng(cameraImage);
-      debugPrint('Camera frame received: ${cameraImage.width} x ${cameraImage.height}, PNG ${pngBytes.length} bytes');
+      // debugPrint('Camera frame received: ${cameraImage.width} x ${cameraImage.height}, PNG ${pngBytes.length} bytes');
       // pngBytes now contains the encoded PNG in memory.
       // Use pngBytes for transmission, upload, or further processing.
       final pngbytes = pngBytes.buffer;
-      netInterface.sendData('CameraFrame', '', pngbytes);
+      mqttInterface.sendData('CameraFrame', '', pngbytes);
     } catch (e, st) {
       debugPrint('Failed to encode camera frame to PNG: $e\n$st');
     }
   }
 
   Uint8List _encodeCameraImageToPng(CameraImage image) {
-    final rgbImage = _convertYuv420ToRgb(image);
+    var rgbImage = _convertYuv420ToRgb(image);
+    if (settingsService.getCameraGreyscale()) {
+      rgbImage = img.grayscale(rgbImage);
+    }
+    
     return Uint8List.fromList(img.encodePng(rgbImage));
   }
 
@@ -202,10 +218,10 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.black,
                   ),
                   clipBehavior: Clip.hardEdge,
-                  child: CameraDisplay(
-                    camera: rearCamera,
-                    onFrame: _handleCameraFrame,
-                  ),
+                                  child: CameraDisplay(
+                                    camera: rearCamera,
+                                    onFrame: _handleCameraFrame,
+                                  ),
                 ),
               ),
             Flexible(
@@ -218,6 +234,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
 
 class CameraDisplay extends StatefulWidget {
   final CameraDescription? camera;
@@ -299,7 +316,6 @@ class _CameraDisplayState extends State<CameraDisplay> {
     }
     _lastFrameTime = now;
 
-    // final bytes = _concatenatePlanes(image.planes);
     widget.onFrame(image);
   }
 
@@ -363,7 +379,7 @@ class ObsButton extends StatelessWidget {
 
   void _onPressed() {
     print('Button $title pressed');
-    netInterface.sendData('LoggerButton',   title);
+    mqttInterface.sendData('LoggerButton',   title);
   }
 
   @override

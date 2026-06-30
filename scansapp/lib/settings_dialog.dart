@@ -19,6 +19,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController _ipController;
   late TextEditingController _portController;
   late bool _showCamera;
+  late bool _cameraGreyscale;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       text: widget.settingsService.getPort().toString(),
     );
     _showCamera = widget.settingsService.getShowCamera();
+    _cameraGreyscale = widget.settingsService.getCameraGreyscale();
   }
 
   @override
@@ -62,6 +64,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     await widget.settingsService.setIpAddress(_ipController.text);
     await widget.settingsService.setPort(portValue);
     await widget.settingsService.setShowCamera(_showCamera);
+    await widget.settingsService.setCameraGreyscale(_cameraGreyscale);
 
     if (mounted) {
       Navigator.pop(context, true);
@@ -113,6 +116,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         _ipController.text = widget.settingsService.getIpAddress();
         _portController.text = widget.settingsService.getPort().toString();
         _showCamera = widget.settingsService.getShowCamera();
+        _cameraGreyscale = widget.settingsService.getCameraGreyscale();
         _showSuccessSnackBar('Settings reset to defaults');
       }
     }
@@ -257,6 +261,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 subtitle: const Text('Display rear camera preview at low resolution'),
                 value: _showCamera,
                 onChanged: (value) => setState(() => _showCamera = value),
+              ),
+              const SizedBox(height: 8),
+              // Greyscale option
+              SwitchListTile(
+                title: const Text('Convert camera image to greyscale'),
+                subtitle: const Text('Send camera frames as greyscale PNG'),
+                value: _cameraGreyscale,
+                onChanged: (value) => setState(() => _cameraGreyscale = value),
               ),
               const SizedBox(height: 24),
 

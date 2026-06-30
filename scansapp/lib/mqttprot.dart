@@ -1,16 +1,26 @@
 /*
 Example copied from https://github.com/shamblett/mqtt_client/blob/master/example/mqtt_server_client.dart
 */
+import 'dart:ffi';
+import 'dart:typed_data';
+
+import 'settings_service.dart';
 import 'dart:io';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:typed_data/typed_buffers.dart';
 
 class MQTTNetProt {
-  // final client = MqttServerClient('test.mosquitto.org', 'uouypouop');
-  final client = MqttServerClient('192.168.0.100', 'uouypouop');
+  // final client = MqttServerClient('test.mosquitto.org', 'uouypo888uop');
+  // final client = MqttServerClient('192.168.1.173', 'uouyp89ouop');
+  var client = null;
 
   var pongCount = 0; // Pong counter
   var pingCount = 0; // Ping counter
+
+  SettingsService settingsService;
+
+  MQTTNetProt(this.settingsService);
 
   Future<int> connect() async {
     /// A websocket URL must start with ws:// or wss:// or Dart will throw an exception, consult your websocket MQTT broker
@@ -23,12 +33,17 @@ class MQTTNetProt {
     /// You can also supply your own websocket protocol list or disable this feature using the websocketProtocols
     /// setter, read the API docs for further details here, the vast majority of brokers will support the client default
     /// list so in most cases you can ignore this.
+    /// 
+    /// 
+       print('MQTT client connecting to ${settingsService.getIpAddress()}:${settingsService.getPort()}');
+   
+    client = MqttServerClient(settingsService.getIpAddress(), settingsService.getDeviceName());
 
     /// Set logging on if needed, defaults to off
     client.logging(on: false);
 
     /// Set the correct MQTT protocol for mosquito
-    client.setProtocolV311();
+    client.setProtocolV31();
 
     /// If you intend to use a keep alive you must set it here otherwise keep alive will be disabled.
     client.keepAlivePeriod = 20;
@@ -37,6 +52,8 @@ class MQTTNetProt {
     /// if [client.socketTimeout] is set then this will take precedence and this setting will be
     /// disabled.
     client.connectTimeoutPeriod = 2000; // milliseconds
+
+    client.port = 1883;
 
     /// The socket timeout period can be set, the minimum value is 1000ms.
     /// If set then this setting takes precedence and [client.connectionTimeoutPeriod] is disabled.
@@ -74,7 +91,7 @@ class MQTTNetProt {
         .withWillMessage('My Will message')
         .startClean() // Non persistent session for testing
         .withWillQos(MqttQos.atLeastOnce);
-    print('EXAMPLE::Mosquitto client connecting....');
+    // print('EXAMPLE::Mosquitto client connecting....');
     client.connectionMessage = connMess;
 
     /// Connect the client, any errors here are communicated by raising of the appropriate exception. Note
@@ -82,6 +99,7 @@ class MQTTNetProt {
     /// never send malformed messages.
     try {
       await client.connect();
+      print('MQTT client connected to ${settingsService.getIpAddress()}:${settingsService.getPort()}');
     } on NoConnectionException catch (e) {
       // Raised by the client when connection fails.
       print('EXAMPLE::client exception - $e');
@@ -101,13 +119,14 @@ class MQTTNetProt {
         'EXAMPLE::ERROR Mosquitto client connection failed - disconnecting, status is ${client.connectionStatus}',
       );
       client.disconnect();
-      exit(-1);
+      client = null;
+      //exit(-1);
     }
 
     /// Ok, lets try a subscription
-    print('EXAMPLE::Subscribing to the test/lol topic');
-    const topic = 'test/lol'; // Not a wildcard topic
-    client.subscribe(topic, MqttQos.atMostOnce);
+    // print('EXAMPLE::Subscribing to the test/lol topic');
+    // const topic = 'test/lol'; // Not a wildcard topic
+    // client.subscribe(topic, MqttQos.atMostOnce);
 
     /// The client has a change notifier object(see the Observable class) which we then listen to to get
     /// notifications of published updates to each subscribed topic.
@@ -134,56 +153,128 @@ class MQTTNetProt {
     /// If needed you can listen for published messages that have completed the publishing
     /// handshake which is Qos dependant. Any message received on this stream has completed its
     /// publishing handshake with the broker.
-    client.published!.listen((MqttPublishMessage message) {
-      print(
-        'EXAMPLE::Published notification:: topic is ${message.variableHeader!.topicName}, with Qos ${message.header!.qos}',
-      );
-    });
+    // client.published!.listen((MqttPublishMessage message) {
+    //   print(
+    //     'EXAMPLE::Published notification:: topic is ${message.variableHeader!.topicName}, with Qos ${message.header!.qos}',
+    //   );
+    // });
 
     /// Lets publish to our topic
     /// Use the payload builder rather than a raw buffer
     /// Our known topic to publish to
-    const pubTopic = 'Dart/Mqtt_client/testtopic';
-    final builder = MqttClientPayloadBuilder();
-    builder.addString('Hello from mqtt_client');
+    // const pubTopic = 'Dart/Mqtt_client/testtopic';
+    // final builder = MqttClientPayloadBuilder();
+    // builder.addString('Hello from mqtt_client');
 
-    /// Subscribe to it
-    print('EXAMPLE::Subscribing to the Dart/Mqtt_client/testtopic topic');
-    client.subscribe(pubTopic, MqttQos.exactlyOnce);
+    // /// Subscribe to it
+    // print('EXAMPLE::Subscribing to the Dart/Mqtt_client/testtopic topic');
+    // client.subscribe(pubTopic, MqttQos.exactlyOnce);
 
-    /// Publish it
-    print('EXAMPLE::Publishing our topic');
-    client.publishMessage(pubTopic, MqttQos.exactlyOnce, builder.payload!);
+    // /// Publish it
+    // print('EXAMPLE::Publishing our topic');
+    // client.publishMessage(pubTopic, MqttQos.exactlyOnce, builder.payload!);
 
-    /// Ok, we will now sleep a while, in this gap you will see ping request/response
-    /// messages being exchanged by the keep alive mechanism.
-    print('EXAMPLE::Sleeping....');
-    await MqttUtilities.asyncSleep(60);
+    // sayCounts();
+    // /// Ok, we will now sleep a while, in this gap you will see ping request/response
+    // /// messages being exchanged by the keep alive mechanism.
+    // print('EXAMPLE::Sleeping....');
+    // await MqttUtilities.asyncSleep(60);
 
-    /// Print the ping/pong cycle latency data before disconnecting.
-    print('EXAMPLE::Keep alive latencies');
-    print(
-      'The latency of the last ping/pong cycle is ${client.lastCycleLatency} milliseconds',
-    );
-    print(
-      'The average latency of all the ping/pong cycles is ${client.averageCycleLatency} milliseconds',
-    );
+    // sayCounts();
+
+    // /// Print the ping/pong cycle latency data before disconnecting.
+    // print('EXAMPLE::Keep alive latencies');
+    // print(
+    //   'The latency of the last ping/pong cycle is ${client.lastCycleLatency} milliseconds',
+    // );
+    // print(
+    //   'The average latency of all the ping/pong cycles is ${client.averageCycleLatency} milliseconds',
+    // );
 
     /// Finally, unsubscribe and exit gracefully
-    print('EXAMPLE::Unsubscribing');
-    client.unsubscribe(topic);
+    // print('EXAMPLE::Unsubscribing');
+    // client.unsubscribe(topic);
 
     /// Wait for the unsubscribe message from the broker if you wish.
-    await MqttUtilities.asyncSleep(2);
-    print('EXAMPLE::Disconnecting');
-    client.disconnect();
-    print('EXAMPLE::Exiting normally');
+    // await MqttUtilities.asyncSleep(2);
+    // print('EXAMPLE::Disconnecting');
+    // client.disconnect();
+    // print('EXAMPLE::Exiting normally');
     return 0;
+  }
+
+  void sendData([String dataType = 'Default', String dataId = '', ByteBuffer? data]) async {
+    if (client == null) {
+      print('MQTT client is not connected.');
+      return;
+    }
+
+    String topic;
+    if (dataId.isNotEmpty) {
+      topic = "$dataType/${settingsService.getDeviceName()} $dataId";
+    } else {
+      topic = "$dataType/${settingsService.getDeviceName()}";
+    }
+
+    final builder = MqttClientPayloadBuilder();
+    if (data != null) {
+      var bytes = Uint8List.view(data);
+      Uint8Buffer dataBuffer = Uint8Buffer();
+      dataBuffer.addAll(bytes);
+      builder.addBuffer(dataBuffer);
+    } else {
+      builder.addString('No data provided');
+    }
+
+    try {
+      client.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+      print('Published message to topic $topic');
+    } catch (e) {
+      print('Failed to publish message: $e');
+    }
+  }
+
+
+  // bool sendData(String topic, String message) {
+  //   if (client == null) {
+  //     print('MQTT client is not connected.');
+  //     return false;
+  //   }
+
+  //   final builder = MqttClientPayloadBuilder();
+  //   builder.addString(message);
+
+  //   try {
+  //     client.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+  //     print('Published message to topic $topic: $message');
+  //     return true;
+  //   } catch (e) {
+  //     print('Failed to publish message: $e');
+  //     return false;
+  //   }
+  // }
+
+  void disconnect() {
+    if (client != null) {
+      client.unsubscribe();
+      client.disconnect();
+      client = null;
+    }
+  }
+
+  void reconnect() {
+    disconnect();
+    connect();
   }
 
   /// The subscribed callback
   void onSubscribed(String topic) {
     print('EXAMPLE::Subscription confirmed for topic $topic');
+  }
+
+  void sayCounts() {
+    print('EXAMPLE:: Ping count is $pingCount');
+    print('EXAMPLE:: Pong count is $pongCount');
   }
 
   /// The unsolicited disconnect callback
@@ -196,7 +287,7 @@ class MQTTNetProt {
       print(
         'EXAMPLE::OnDisconnected callback is unsolicited or none, this is incorrect - exiting',
       );
-      exit(-1);
+      //exit(-1);
     }
     if (pongCount == 3) {
       print('EXAMPLE:: Pong count is correct');
@@ -219,16 +310,16 @@ class MQTTNetProt {
 
   /// Pong callback
   void pong() {
-    print('EXAMPLE::Ping response client callback invoked');
+    // print('EXAMPLE::Ping response client callback invoked');
     pongCount++;
-    print(
-      'EXAMPLE::Latency of this ping/pong cycle is ${client.lastCycleLatency} milliseconds',
-    );
+    // print(
+    //   'EXAMPLE::Latency of this ping/pong cycle is ${client.lastCycleLatency} milliseconds',
+    // );
   }
 
   /// Ping callback
   void ping() {
-    print('EXAMPLE::Ping sent client callback invoked');
+    // print('EXAMPLE::Ping sent client callback invoked');
     pingCount++;
   }
 }

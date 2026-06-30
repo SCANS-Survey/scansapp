@@ -6,11 +6,13 @@ class SettingsService {
   static const String _ipAddressKey = 'device_ip_address';
   static const String _portKey = 'device_port';
   static const String _showCameraKey = 'show_camera';
+  static const String _cameraGreyscaleKey = 'camera_greyscale';
 
   static const String _defaultName = 'Logger Device';
   static const String _defaultIpAddress = '230.0.0.0';
   static const int _defaultPort = 4446;
   static const bool _defaultShowCamera = true;
+  static const bool _defaultCameraGreyscale = false;
 
   late SharedPreferences _prefs;
 
@@ -54,9 +56,19 @@ class SettingsService {
     return _prefs.getBool(_showCameraKey) ?? _defaultShowCamera;
   }
 
+  /// Return whether camera frames should be converted to greyscale
+  bool getCameraGreyscale() {
+    return _prefs.getBool(_cameraGreyscaleKey) ?? _defaultCameraGreyscale;
+  }
+
   /// Set whether the camera preview should be shown
   Future<void> setShowCamera(bool show) async {
     await _prefs.setBool(_showCameraKey, show);
+  }
+
+  /// Set whether camera frames should be converted to greyscale
+  Future<void> setCameraGreyscale(bool greyscale) async {
+    await _prefs.setBool(_cameraGreyscaleKey, greyscale);
   }
 
   /// Reset all settings to defaults
@@ -65,5 +77,6 @@ class SettingsService {
     await _prefs.remove(_ipAddressKey);
     await _prefs.remove(_portKey);
     await _prefs.remove(_showCameraKey);
+    await _prefs.remove(_cameraGreyscaleKey);
   }
 }
