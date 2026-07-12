@@ -2,8 +2,10 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:mqtt_client/mqtt_client.dart';
 
 import 'mqttprot.dart';
 import 'settings_dialog.dart';
@@ -95,21 +97,23 @@ class _HomePageState extends State<HomePage> {
     ).then((_) {
           // Refresh device name after dialog closes
           _refreshDeviceName();
-          mqttInterface.reconnect(); // Reconnect MQTT after settings change
         });
 
     if (mounted && result == true) {
       setState(() {
         _showCamera = settingsService.getShowCamera();
+        //settingsService.setShowCamera(_showCamera);
         _deviceName = settingsService.getDeviceName();
+          mqttInterface.reconnect(); // Reconnect MQTT after settings change
       });
     }
   }
 
-  void _handleCameraFrame(CameraImage cameraImage) {
+  void _handleCameraFrame(CameraImage cameraImage, CameraLensDirection lensDirection) {
     try {
-      final pngBytes = _encodeCameraImageToPng(cameraImage);
-      // debugPrint('Camera frame received: ${cameraImage.width} x ${cameraImage.height}, PNG ${pngBytes.length} bytes');
+      // cameraImage = cameraImage.; // Rotate the image by 90 degrees
+      final pngBytes = _encodeCameraImageToPng(cameraImage, lensDirection);
+      //print('Camera frame received: ${cameraImage.width} x ${cameraImage.height}, PNG ${pngBytes.length} bytes');
       // pngBytes now contains the encoded PNG in memory.
       // Use pngBytes for transmission, upload, or further processing.
       final pngbytes = pngBytes.buffer;
@@ -119,12 +123,23 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Uint8List _encodeCameraImageToPng(CameraImage image) {
+  Uint8List _encodeCameraImageToPng(CameraImage image, CameraLensDirection lensDirection) {
     var rgbImage = _convertYuv420ToRgb(image);
     if (settingsService.getCameraGreyscale()) {
       rgbImage = img.grayscale(rgbImage);
     }
-    
+
+    // Enforce portrait orientation regardless of sensor. If image is wider
+    // than tall, rotate 90 degrees to make it portrait.
+    // if (rgbImage.width > rgbImage.height) {
+      rgbImage = _rotate90(rgbImage);
+    // }
+
+    // // Mirror front camera to match preview.
+    // if (lensDirection == CameraLensDirection.front) {
+    //   rgbImage = img.flipHorizontal(rgbImage);
+    // }
+
     return Uint8List.fromList(img.encodePng(rgbImage));
   }
 
@@ -165,6 +180,18 @@ class _HomePageState extends State<HomePage> {
     return rgbImage;
   }
 
+  img.Image _rotate90(img.Image src) {
+    final dst = img.Image(width: src.height, height: src.width);
+    for (var y = 0; y < src.height; y++) {
+      for (var x = 0; x < src.width; x++) {
+        final color = src.getPixel(x, y);
+        // Clockwise 90: newX = height - 1 - y, newY = x
+        dst.setPixel(src.height - 1 - y, x, color);
+      }
+    }
+    return dst;
+  }
+
   @override
   Widget build(BuildContext context) {
     final rearCamera = widget.cameras.isEmpty
@@ -181,18 +208,18 @@ class _HomePageState extends State<HomePage> {
           child: Text(_deviceName),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              _showCamera ? Icons.camera_alt : Icons.camera_alt_outlined,
-            ),
-            tooltip: 'Toggle camera preview',
-            onPressed: () async {
-              setState(() {
-                _showCamera = !_showCamera;
-              });
-              await settingsService.setShowCamera(_showCamera);
-            },
-          ),
+          // IconButton(
+          //   icon: Icon(
+          //     _showCamera ? Icons.camera_alt : Icons.camera_alt_outlined,
+          //   ),
+          //   tooltip: 'Toggle camera preview',
+          //   onPressed: () async {
+          //     setState(() {
+          //       _showCamera = !_showCamera;
+          //     });
+          //     await settingsService.setShowCamera(_showCamera);
+          //   },
+          // ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _openSettings,
@@ -206,7 +233,13 @@ class _HomePageState extends State<HomePage> {
           children: [
             Flexible(
               flex: 1,
-              child: ObsButton(Colors.green, 'Sighting'),
+              child: ValueListenableBuilder<String>(
+                valueListenable: mqttInterface.counterValue,
+                builder: (context, pt, child) {
+                  final label = (pt.isNotEmpty) ? 'Sighting\n $pt' : 'Sighting';
+                  return ObsButton(Colors.green, 'Sighting', label);
+                },
+              ),
             ),
             if (_showCamera)
               Flexible(
@@ -226,11 +259,61 @@ class _HomePageState extends State<HomePage> {
               ),
             Flexible(
               flex: 1,
-              child: ObsButton(Colors.red, 'Resighting'),
+              child: ObsButton(Colors.red, 'Resighting', 'Resighting'),
             ),
           ],
         ),
       ),
+      bottomNavigationBar: _buildMqttStatusBar(),
+    );
+  }
+
+  Widget _buildMqttStatusBar() {
+    return ValueListenableBuilder<MqttConnectionState?>(
+      valueListenable: mqttInterface.connectionState,
+      builder: (context, state, child) {
+        String label;
+        Color color;
+        switch (state) {
+          case MqttConnectionState.connected:
+            label = 'MQTT: Connected';
+            color = Colors.green;
+            break;
+          case MqttConnectionState.connecting:
+            label = 'MQTT: Connecting';
+            color = Colors.orange;
+            break;
+          case MqttConnectionState.disconnecting:
+            label = 'MQTT: Disconnecting';
+            color = Colors.orangeAccent;
+            break;
+          case MqttConnectionState.disconnected:
+          default:
+            label = 'MQTT: Disconnected';
+            color = Colors.red;
+        }
+
+        return Container(
+          height: 36,
+          color: Colors.black,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Icon(Icons.cloud, color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const Spacer(),
+              Text(
+                '${settingsService.getIpAddress()}:${settingsService.getPort()}',
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -238,7 +321,7 @@ class _HomePageState extends State<HomePage> {
 
 class CameraDisplay extends StatefulWidget {
   final CameraDescription? camera;
-  final void Function(CameraImage imageData) onFrame;
+  final void Function(CameraImage imageData, CameraLensDirection lensDirection) onFrame;
 
   const CameraDisplay({
     super.key,
@@ -288,6 +371,7 @@ class _CameraDisplayState extends State<CameraDisplay> {
       ResolutionPreset.low,
       enableAudio: false,
       imageFormatGroup: ImageFormatGroup.yuv420,
+
     );
 
     try {
@@ -297,6 +381,7 @@ class _CameraDisplayState extends State<CameraDisplay> {
         _controller = controller;
         _cameraError = null;
       });
+      controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
       await controller.startImageStream(_processCameraImage);
     } catch (e) {
       debugPrint('Camera initialize failed: $e');
@@ -316,7 +401,10 @@ class _CameraDisplayState extends State<CameraDisplay> {
     }
     _lastFrameTime = now;
 
-    widget.onFrame(image);
+    // Pass only the lens direction; rotation is enforced to portrait in the
+    // encoder so we don't rely on device sensor orientation.
+    final lensDirection = _controller?.description.lensDirection ?? CameraLensDirection.back;
+    widget.onFrame(image, lensDirection);
   }
 
   Uint8List _concatenatePlanes(List<Plane> planes) {
@@ -372,10 +460,11 @@ class _CameraDisplayState extends State<CameraDisplay> {
 }
 
 class ObsButton extends StatelessWidget {
-  const ObsButton(this.colour, this.title, {super.key});
+  const ObsButton(this.colour, this.title, this.label, {super.key});
 
   final Color colour;
   final String title;
+  final String label;
 
   void _onPressed() {
     print('Button $title pressed');
@@ -384,6 +473,7 @@ class ObsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String? childText;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: ElevatedButton(
@@ -396,7 +486,8 @@ class ObsButton extends StatelessWidget {
           ),
           minimumSize: const Size(double.infinity, 500.0),
         ),
-        child: Text(title),
+                  // final title = (pt.isNotEmpty) ? 'Sighting\n $pt' : 'Sighting';
+        child: Text(label, textAlign: TextAlign.center),
         onPressed: _onPressed,
       ),
     );

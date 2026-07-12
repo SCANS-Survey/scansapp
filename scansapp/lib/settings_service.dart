@@ -36,6 +36,15 @@ class SettingsService {
     return _prefs.getString(_ipAddressKey) ?? _defaultIpAddress;
   }
 
+/// Get the sightings platform name, Primary or Tracker. 
+  String getPlatform() {
+    if (getDeviceName().toLowerCase().contains('tracker')) {
+      return 'Tracker';
+    } else {
+      return 'Primary';
+    }
+  }
+
   /// Set the IP address
   Future<void> setIpAddress(String ipAddress) async {
     await _prefs.setString(_ipAddressKey, ipAddress);
