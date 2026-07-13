@@ -1,6 +1,7 @@
 /*
 Example copied from https://github.com/shamblett/mqtt_client/blob/master/example/mqtt_server_client.dart
 */
+import 'dart:async';
 import 'dart:ffi';
 import 'dart:typed_data';
 
@@ -178,6 +179,11 @@ class MQTTNetProt {
       }
     });
 
+    // set up a 'hello' time to send to tbe broker every 30 seconds to keep the connection alive and to let the broker know we are still here
+    sendStringData('Hello/Logger', "", settingsService.getDeviceName());
+    Timer.periodic (const Duration(seconds: 30), (timer) {
+      sendStringData('Hello/Logger', "", settingsService.getDeviceName());
+    });
 
     /// If needed you can listen for published messages that have completed the publishing
     /// handshake which is Qos dependant. Any message received on this stream has completed its
@@ -251,6 +257,10 @@ class MQTTNetProt {
     else {
       print('Unknown MQTT notification:: topic is <${message.topic}>');
     }
+  }
+
+  void sendStringData(String dataType, String dataId, String data) {
+    sendData(dataType, dataId, Uint8List.fromList(data.codeUnits).buffer);
   }
 
   void sendData([
