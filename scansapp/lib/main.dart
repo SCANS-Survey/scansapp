@@ -10,11 +10,13 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'mqttprot.dart';
 import 'settings_dialog.dart';
 import 'settings_service.dart';
+import 'appaudio.dart';
 // import 'udpprot.dart';
 
 // var netInterface = UDPNetwork();
 final settingsService = SettingsService();
 final mqttInterface = MQTTNetProt(settingsService);
+final LoggerAudio loggerAudio = LoggerAudio(settingsService: settingsService, mqttInterface: mqttInterface);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,8 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Failed to initialize cameras: $e');
   }
+
+  loggerAudio.startAudioCapture(); // Start audio capture if enabled
 
  runApp(MainApp(cameras: cameras));
 }
@@ -105,6 +109,7 @@ class _HomePageState extends State<HomePage> {
         //settingsService.setShowCamera(_showCamera);
         _deviceName = settingsService.getDeviceName();
           mqttInterface.reconnect(); // Reconnect MQTT after settings change
+          loggerAudio.stoporstart();
       });
     }
   }
@@ -125,9 +130,6 @@ class _HomePageState extends State<HomePage> {
 
   Uint8List _encodeCameraImageToPng(CameraImage image, CameraLensDirection lensDirection) {
     var rgbImage = _convertYuv420ToRgb(image);
-    if (settingsService.getCameraGreyscale()) {
-      rgbImage = img.grayscale(rgbImage);
-    }
 
     // Enforce portrait orientation regardless of sensor. If image is wider
     // than tall, rotate 90 degrees to make it portrait.

@@ -19,7 +19,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController _ipController;
   late TextEditingController _portController;
   late bool _showCamera;
-  late bool _cameraGreyscale;
+  late bool _captureAudio;
 
   @override
   void initState() {
@@ -32,8 +32,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
       text: widget.settingsService.getPort().toString(),
     );
     _showCamera = widget.settingsService.getShowCamera();
-    _cameraGreyscale = widget.settingsService.getCameraGreyscale();
+    _captureAudio = widget.settingsService.getCaptureAudio();
   }
+
 
   @override
   void dispose() {
@@ -64,8 +65,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     await widget.settingsService.setIpAddress(_ipController.text);
     await widget.settingsService.setPort(portValue);
     await widget.settingsService.setShowCamera(_showCamera);
-    await widget.settingsService.setCameraGreyscale(_cameraGreyscale);
-
+    await widget.settingsService.setCaptureAudio(_captureAudio);
     if (mounted) {
       Navigator.pop(context, true);
       _showSuccessSnackBar('Settings saved successfully');
@@ -116,7 +116,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         _ipController.text = widget.settingsService.getIpAddress();
         _portController.text = widget.settingsService.getPort().toString();
         _showCamera = widget.settingsService.getShowCamera();
-        _cameraGreyscale = widget.settingsService.getCameraGreyscale();
+        _captureAudio = widget.settingsService.getCaptureAudio();
         _showSuccessSnackBar('Settings reset to defaults');
       }
     }
@@ -265,10 +265,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
               const SizedBox(height: 8),
               // Greyscale option
               SwitchListTile(
-                title: const Text('Convert camera image to greyscale'),
-                subtitle: const Text('Send camera frames as greyscale PNG'),
-                value: _cameraGreyscale,
-                onChanged: (value) => setState(() => _cameraGreyscale = value),
+                title: const Text('Capture Audio'),
+                subtitle: const Text('Record audio and send to base station'),
+                value: _captureAudio,
+                onChanged: (value) => setState(() => _captureAudio = value),
               ),
               const SizedBox(height: 24),
 

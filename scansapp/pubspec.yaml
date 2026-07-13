@@ -1,5 +1,5 @@
 name: scansapp
-description: "A new Flutter project."
+description: "SCANS Observer App"
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -15,7 +15,8 @@ dependencies:
   udp: ^5.0.3
   shared_preferences: ^2.2.0
   wakelock_plus: ^1.6.1
-  image: ^4.8.0
+  image: ^4.0.17
+  record: ^6.2.1
 
 dev_dependencies:
   flutter_test:
