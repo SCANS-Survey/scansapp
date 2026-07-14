@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:ffi';
-import 'dart:typed_data';
 
 import 'settings_service.dart';
 import 'package:record/record.dart';
@@ -49,7 +47,7 @@ class LoggerAudio {
       // Handle audio data (Uint8List)
       // Send the audio data to the base station
       // print('Audio data sent: ${data.length} bytes is ${data.buffer.lengthInBytes}');
-      var goodData = data.sublist(5, data.lengthInBytes);
+      var goodData = data.sublist(0, data.lengthInBytes);
       mqttInterface.sendData("AudioData", "", goodData.buffer);
     });
   }
