@@ -238,8 +238,28 @@ class _HomePageState extends State<HomePage> {
               child: ValueListenableBuilder<String>(
                 valueListenable: mqttInterface.counterValue,
                 builder: (context, pt, child) {
-                  final label = (pt.isNotEmpty) ? 'Sighting\n $pt' : 'Sighting';
-                  return ObsButton(Colors.green, 'Sighting', label);
+                  return ValueListenableBuilder<String>(
+                    valueListenable: mqttInterface.recordingState,
+                    builder: (context, recording, child) {
+                      final parts = <String>[];
+                      if (pt.isNotEmpty) {
+                        parts.add("No. " + pt);
+                      }
+                      var buttonColour = Colors.green;
+                      if (recording.isNotEmpty) {
+                        if (recording == "-1") {
+                          parts.add("Recording: OFF");
+                        } else {
+                          parts.add("Recording: " + recording);
+                          buttonColour = Colors.red;
+                        }
+                      }
+                      final label = parts.isNotEmpty
+                          ? 'Sighting\n${parts.join('\n')}'
+                          : 'Sighting';
+                      return ObsButton(buttonColour, 'Sighting', label);
+                    },
+                  );
                 },
               ),
             ),
@@ -261,7 +281,7 @@ class _HomePageState extends State<HomePage> {
               ),
             Flexible(
               flex: 1,
-              child: ObsButton(Colors.red, 'Resighting', 'Resighting'),
+              child: ObsButton(Colors.green, 'Resighting', 'Resighting'),
             ),
           ],
         ),
