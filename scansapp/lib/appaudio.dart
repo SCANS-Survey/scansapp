@@ -16,6 +16,7 @@ final recordConfig = RecordConfig(
   autoGain: true,
   echoCancel: true,
   noiseSuppress: true,
+  streamBufferSize: 800,
 );
 
 //https://docs.flutter.dev/cookbook/audio/record

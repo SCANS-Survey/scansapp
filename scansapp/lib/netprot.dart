@@ -2,7 +2,6 @@
 Abstraact class for network protocol. Will want to try MQTT and UDP Multicast
  */
 
-import 'dart:async';
 import 'dart:io';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';

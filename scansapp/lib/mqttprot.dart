@@ -15,12 +15,13 @@ import 'package:typed_data/typed_buffers.dart';
 class MQTTNetProt {
   // final client = MqttServerClient('test.mosquitto.org', 'uouypo888uop');
   // final client = MqttServerClient('192.168.1.173', 'uouyp89ouop');
-  var client = null;
+  var client;
 
   var pongCount = 0; // Pong counter
   var pingCount = 0; // Ping counter
 
   var countTopic;
+  var recordTopic;
 
   SettingsService settingsService;
 
@@ -28,6 +29,7 @@ class MQTTNetProt {
   final ValueNotifier<MqttConnectionState?> connectionState = ValueNotifier<MqttConnectionState?>(null);
   // Notifier for the counter topic payload so UI can display it
   final ValueNotifier<String> counterValue = ValueNotifier<String>('');
+  final ValueNotifier<String> recordingState = ValueNotifier<String>('');
 
   MQTTNetProt(this.settingsService);
 
@@ -152,7 +154,9 @@ class MQTTNetProt {
     now, just set it, bus will have to work this out !
     */
     countTopic = getCounterTopic();
+    recordTopic = getRecordTopic();
     client.subscribe(countTopic, MqttQos.atLeastOnce);
+    client.subscribe(recordTopic, MqttQos.atLeastOnce);
     /// Ok, lets try a subscription
     // print('EXAMPLE::Subscribing to the test/lol topic');
     // const topic = 'test/lol'; // Not a wildcard topic
@@ -237,6 +241,10 @@ class MQTTNetProt {
     // print('EXAMPLE::Exiting normally');
     return 0;
   }
+
+  String getRecordTopic() {
+    return 'Logger/LoggerRecording/${settingsService.getDeviceName()}';
+  }
   
   String getCounterTopic() {
     return 'Logger/LoggerCounter/${settingsService.getPlatform()}';
@@ -252,6 +260,14 @@ class MQTTNetProt {
       try {
         counterValue.value = pt;
       } catch (_) {}
+      return;
+    }
+    else if (message.topic == getRecordTopic()) {
+      final pt = MqttPublishPayload.bytesToStringAsString(
+        recMess.payload.message,
+      );
+      recordingState.value = pt;
+      // print('EXAMPLE::Recording notification:: topic is <${message.topic}>, payload is <-- $pt -->');
       return;
     }
     else {

@@ -488,9 +488,9 @@ class ObsButton extends StatelessWidget {
           ),
           minimumSize: const Size(double.infinity, 500.0),
         ),
+        onPressed: _onPressed,
                   // final title = (pt.isNotEmpty) ? 'Sighting\n $pt' : 'Sighting';
         child: Text(label, textAlign: TextAlign.center),
-        onPressed: _onPressed,
       ),
     );
   }

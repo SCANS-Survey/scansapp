@@ -35,12 +35,10 @@ class UDPNetwork {
     await sender.send(toSend.asUint8List(), multicastEndpoint);
   }
 
-  /**
- * Create a byte array to transmit. This is a bigger pain in the arse than 
- * I imagined it would be in dart !
- * Would have to do something a bit different for non string data, particularly 
- * with regard to getting the CRC. 
- */
+  /// Create a byte array to transmit. This is a bigger pain in the arse than 
+  /// I imagined it would be in dart !
+  /// Would have to do something a bit different for non string data, particularly 
+  /// with regard to getting the CRC. 
   ByteBuffer makeItem(String data, [ByteBuffer? dataBuffer]) {
     var list = <int>[]; // this makes a list, rather than a set. big difference.
     list.addAll("TOPC".codeUnits);
