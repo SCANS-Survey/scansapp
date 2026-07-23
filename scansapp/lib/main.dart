@@ -1,3 +1,4 @@
+//import 'dart:ffi';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -92,25 +93,28 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _refreshCameraSetting() {
+    setState(() {
+      _showCamera = settingsService.getShowCamera();
+    });
+  }
+
   Future<void> _openSettings() async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) {
         return SettingsDialog(settingsService: settingsService);
       },
-    ).then((_) {
-          // Refresh device name after dialog closes
-          _refreshDeviceName();
-        });
+    );
 
-    if (mounted && result == true) {
-      setState(() {
-        _showCamera = settingsService.getShowCamera();
-        //settingsService.setShowCamera(_showCamera);
-        _deviceName = settingsService.getDeviceName();
-          mqttInterface.reconnect(); // Reconnect MQTT after settings change
-          loggerAudio.stoporstart();
-      });
+    if (!mounted) return;
+
+    _refreshDeviceName();
+    _refreshCameraSetting();
+
+    if (result == true) {
+      mqttInterface.reconnect();
+      loggerAudio.stoporstart();
     }
   }
 
@@ -235,29 +239,40 @@ class _HomePageState extends State<HomePage> {
           children: [
             Flexible(
               flex: 1,
-              child: ValueListenableBuilder<String>(
-                valueListenable: mqttInterface.counterValue,
-                builder: (context, pt, child) {
+              child: ValueListenableBuilder<MqttConnectionState?>(
+                valueListenable: mqttInterface.connectionState,
+                builder: (context, connectionState, child) {
+                  final bool mqttConnected = connectionState == MqttConnectionState.connected;
+
                   return ValueListenableBuilder<String>(
-                    valueListenable: mqttInterface.recordingState,
-                    builder: (context, recording, child) {
-                      final parts = <String>[];
-                      if (pt.isNotEmpty) {
-                        parts.add("No. " + pt);
-                      }
-                      var buttonColour = Colors.green;
-                      if (recording.isNotEmpty) {
-                        if (recording == "-1") {
-                          parts.add("Recording: OFF");
-                        } else {
-                          parts.add("Recording: " + recording);
-                          buttonColour = Colors.red;
-                        }
-                      }
-                      final label = parts.isNotEmpty
-                          ? 'Sighting\n${parts.join('\n')}'
-                          : 'Sighting';
-                      return ObsButton(buttonColour, 'Sighting', label);
+                    valueListenable: mqttInterface.counterValue,
+                    builder: (context, pt, child) {
+                      return ValueListenableBuilder<String>(
+                        valueListenable: mqttInterface.recordingState,
+                        builder: (context, recording, child) {
+                          final parts = <String>[];
+                          if (pt.isNotEmpty) {
+                            parts.add("No. " + pt);
+                          }
+
+                          Color buttonColour;
+                          if (!mqttConnected) {
+                            buttonColour = Colors.grey;
+                          } else if (recording.isNotEmpty && recording != "-1") {
+                            parts.add("Recording: " + recording);
+                            buttonColour = Colors.red;
+                          } else {
+                            if (recording == "-1" || recording.isEmpty) {
+                              parts.add("Recording: OFF");
+                            }
+                            buttonColour = Colors.green;
+                          }
+                          final label = parts.isNotEmpty
+                              ? 'Sighting\n${parts.join('\n')}'
+                              : 'Sighting';
+                          return ObsButton(buttonColour, 'Sighting', label);
+                        },
+                      );
                     },
                   );
                 },
@@ -281,7 +296,13 @@ class _HomePageState extends State<HomePage> {
               ),
             Flexible(
               flex: 1,
-              child: ObsButton(Colors.green, 'Resighting', 'Resighting'),
+              child: ValueListenableBuilder<MqttConnectionState?>(
+                valueListenable: mqttInterface.connectionState,
+                builder: (context, connectionState, child) {
+                  final bool mqttConnected = connectionState == MqttConnectionState.connected;
+                  return ObsButton(mqttConnected ? Colors.green : Colors.grey, 'Resighting', 'Resighting');
+                },
+              ),
             ),
           ],
         ),
@@ -295,6 +316,7 @@ class _HomePageState extends State<HomePage> {
       valueListenable: mqttInterface.connectionState,
       builder: (context, state, child) {
         String label;
+      print('${_deviceName} main connection state: ${mqttInterface.connectionState.value}');
         Color color;
         switch (state) {
           case MqttConnectionState.connected:

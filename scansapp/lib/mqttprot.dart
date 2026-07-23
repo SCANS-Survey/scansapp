@@ -24,9 +24,12 @@ class MQTTNetProt {
   var recordTopic;
 
   SettingsService settingsService;
+  StreamSubscription<List<MqttReceivedMessage<MqttMessage?>>>? _updatesSubscription;
 
   // Notifier for connection state so UI can react
   final ValueNotifier<MqttConnectionState?> connectionState = ValueNotifier<MqttConnectionState?>(null);
+  // Notifier for a human-readable MQTT status message so the UI can show reconnecting info
+  final ValueNotifier<String> connectionMessage = ValueNotifier<String>('');
   // Notifier for the counter topic payload so UI can display it
   final ValueNotifier<String> counterValue = ValueNotifier<String>('');
   final ValueNotifier<String> recordingState = ValueNotifier<String>('');
@@ -80,6 +83,20 @@ class MQTTNetProt {
 
     /// Add the successful connection callback
     client.onConnected = onConnected;
+
+    client.onAutoReconnect = () {
+      print('MQTT client auto reconnecting...');
+      connectionMessage.value = 'Reconnecting to MQTT broker...';
+      connectionState.value = MqttConnectionState.connecting;
+    };
+
+    client.onAutoReconnected = () {
+      print('MQTT client auto reconnected');
+      connectionMessage.value = 'MQTT connected';
+      connectionState.value = MqttConnectionState.connected;
+      _resubscribeTopics();
+      _listenForUpdates();
+    };
 
     /// Add a subscribed callback, there is also an unsubscribed callback if you need it.
     /// You can add these before connection or change them dynamically after connection if
@@ -138,7 +155,10 @@ class MQTTNetProt {
     /// Check we are connected
     if (client.connectionStatus!.state == MqttConnectionState.connected) {
       print('EXAMPLE::Mosquitto client connected');
+      connectionMessage.value = 'MQTT connected';
       connectionState.value = MqttConnectionState.connected;
+      _resubscribeTopics();
+      _listenForUpdates();
     } else {
       /// Use status here rather than state if you also want the broker return code.
       print(
@@ -149,39 +169,19 @@ class MQTTNetProt {
       //exit(-1);
     }
 
+    if (client == null) {
+      return -1;
+    }
     /*
     Try to subscribe to the listener for the Primary or Tracker counter topic. for 
     now, just set it, bus will have to work this out !
     */
-    countTopic = getCounterTopic();
-    recordTopic = getRecordTopic();
-    client.subscribe(countTopic, MqttQos.atLeastOnce);
-    client.subscribe(recordTopic, MqttQos.atLeastOnce);
+    _resubscribeTopics();
+
     /// Ok, lets try a subscription
     // print('EXAMPLE::Subscribing to the test/lol topic');
     // const topic = 'test/lol'; // Not a wildcard topic
     // client.subscribe(topic, MqttQos.atMostOnce);
-
-    /// The client has a change notifier object(see the Observable class) which we then listen to to get
-    /// notifications of published updates to each subscribed topic.
-    /// In general you should listen here as soon as possible after connecting, you will not receive any
-    /// publish messages until you do this.
-    /// Also you must re-listen after disconnecting.
-    client.updates!.listen((List<MqttReceivedMessage<MqttMessage?>> c) {
-      // final recMess = c![0].payload as MqttPublishMessage;
-      // final pt = MqttPublishPayload.bytesToStringAsString(
-      //   recMess.payload.message,
-      // );
-
-      /// The above may seem a little convoluted for users only interested in the
-      /// payload, some users however may be interested in the received publish message,
-      /// lets not constrain ourselves yet until the package has been in the wild
-      /// for a while.
-      /// The payload is a byte buffer, this will be specific to the topic
-      for (int i = 0; i < c.length; i++) {
-        processMessage(c[i]);
-      }
-    });
 
     // set up a 'hello' time to send to tbe broker every 30 seconds to keep the connection alive and to let the broker know we are still here
     sendStringData('Hello/Logger', "", settingsService.getDeviceName());
@@ -248,6 +248,35 @@ class MQTTNetProt {
   
   String getCounterTopic() {
     return 'Logger/LoggerCounter/${settingsService.getPlatform()}';
+  }
+
+  void _resubscribeTopics() {
+    if (client == null) {
+      return;
+    }
+
+    countTopic = getCounterTopic();
+    recordTopic = getRecordTopic();
+
+    try {
+      client.subscribe(countTopic, MqttQos.atLeastOnce);
+      client.subscribe(recordTopic, MqttQos.atLeastOnce);
+    } catch (e) {
+      print('Failed to resubscribe MQTT topics: $e');
+    }
+  }
+
+  void _listenForUpdates() {
+    _updatesSubscription?.cancel();
+    if (client == null || client.updates == null) {
+      return;
+    }
+
+    _updatesSubscription = client.updates!.listen((List<MqttReceivedMessage<MqttMessage?>> c) {
+      for (int i = 0; i < c.length; i++) {
+        processMessage(c[i]);
+      }
+    });
   }
 
   void processMessage(MqttReceivedMessage<MqttMessage?> message) {
@@ -338,6 +367,8 @@ class MQTTNetProt {
   // }
 
   void disconnect() {
+    _updatesSubscription?.cancel();
+    _updatesSubscription = null;
     if (client != null) {
       //client.unsubscribe();
       client.disconnect();
@@ -365,6 +396,7 @@ class MQTTNetProt {
     print('***************   MQTT::OnDisconnected client callback - Client disconnection');
     // notify listeners about disconnection
     try {
+      connectionMessage.value = 'MQTT disconnected';
       connectionState.value = MqttConnectionState.disconnected;
     } catch (_) {}
     if (client.connectionStatus!.disconnectionOrigin ==
@@ -394,6 +426,7 @@ class MQTTNetProt {
       'EXAMPLE::OnConnected client callback - Client connection was successful',
     );
     try {
+      connectionMessage.value = 'MQTT connected';
       connectionState.value = MqttConnectionState.connected;
     } catch (_) {}
   }

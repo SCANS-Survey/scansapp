@@ -176,7 +176,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(context, false),
                   ),
                 ],
               ),
@@ -283,7 +283,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   Row(
                     children: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(context, false),
                         child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 8),
