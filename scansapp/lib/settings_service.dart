@@ -23,7 +23,9 @@ class SettingsService {
 
   /// Get the device name
   String getDeviceName() {
-    return _prefs.getString(_nameKey) ?? _defaultName;
+    String name = _prefs.getString(_nameKey) ?? _defaultName;
+    name = name.trim();
+    return name;
   }
 
   /// Set the device name
