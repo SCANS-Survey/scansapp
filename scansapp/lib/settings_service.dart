@@ -9,8 +9,8 @@ class SettingsService {
   static const String _captureaudio = 'capture_audio';
 
   static const String _defaultName = 'Logger Device';
-  static const String _defaultIpAddress = '230.0.0.0';
-  static const int _defaultPort = 4446;
+  static const String _defaultIpAddress = '192.168.0.100';
+  static const int _defaultPort = 1883;
   static const bool _defaultShowCamera = true;
   static const bool _defaultCaptureAudio = true;
 
