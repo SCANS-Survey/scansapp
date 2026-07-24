@@ -68,5 +68,7 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>This app requires camera access to show the rear camera preview.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app uses your location to generate NMEA RMC position updates.</string>
 </dict>
 </plist>

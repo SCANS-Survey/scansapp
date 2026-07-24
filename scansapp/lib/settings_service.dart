@@ -7,12 +7,16 @@ class SettingsService {
   static const String _portKey = 'device_port';
   static const String _showCameraKey = 'show_camera';
   static const String _captureaudio = 'capture_audio';
+  static const String _locationAcquisitionEnabledKey = 'location_acquisition_enabled';
+  static const String _locationAcquisitionIntervalKey = 'location_acquisition_interval_seconds';
 
   static const String _defaultName = 'Logger Device';
   static const String _defaultIpAddress = '192.168.0.100';
   static const int _defaultPort = 1883;
   static const bool _defaultShowCamera = true;
   static const bool _defaultCaptureAudio = true;
+  static const bool _defaultLocationAcquisitionEnabled = false;
+  static const int _defaultLocationAcquisitionIntervalSeconds = 5;
 
   late SharedPreferences _prefs;
 
@@ -80,6 +84,22 @@ class SettingsService {
     await _prefs.setBool(_showCameraKey, show);
   }
 
+  bool getLocationAcquisitionEnabled() {
+    return _prefs.getBool(_locationAcquisitionEnabledKey) ?? _defaultLocationAcquisitionEnabled;
+  }
+
+  Future<void> setLocationAcquisitionEnabled(bool enabled) async {
+    await _prefs.setBool(_locationAcquisitionEnabledKey, enabled);
+  }
+
+  int getLocationAcquisitionIntervalSeconds() {
+    return _prefs.getInt(_locationAcquisitionIntervalKey) ?? _defaultLocationAcquisitionIntervalSeconds;
+  }
+
+  Future<void> setLocationAcquisitionIntervalSeconds(int seconds) async {
+    final sanitizedSeconds = seconds.clamp(1, 300);
+    await _prefs.setInt(_locationAcquisitionIntervalKey, sanitizedSeconds);
+  }
 
   /// Reset all settings to defaults
   Future<void> resetToDefaults() async {
@@ -87,5 +107,8 @@ class SettingsService {
     await _prefs.remove(_ipAddressKey);
     await _prefs.remove(_portKey);
     await _prefs.remove(_showCameraKey);
+    await _prefs.remove(_captureaudio);
+    await _prefs.remove(_locationAcquisitionEnabledKey);
+    await _prefs.remove(_locationAcquisitionIntervalKey);
   }
 }

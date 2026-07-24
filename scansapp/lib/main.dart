@@ -1,4 +1,5 @@
 //import 'dart:ffi';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -12,6 +13,8 @@ import 'mqttprot.dart';
 import 'settings_dialog.dart';
 import 'settings_service.dart';
 import 'appaudio.dart';
+import 'location.dart';
+
 // import 'udpprot.dart';
 
 // var netInterface = UDPNetwork();
@@ -42,6 +45,8 @@ Future<void> main() async {
 
   loggerAudio.startAudioCapture(); // Start audio capture if enabled
 
+
+
  runApp(MainApp(cameras: cameras));
 }
 
@@ -70,21 +75,49 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late String _deviceName;
   late bool _showCamera;
+  final NmeaLocationService _locationService = NmeaLocationService();
+  Timer? _locationTimer;
+  bool _locationAcquisitionEnabled = false;
+  int _locationAcquisitionIntervalSeconds = 5;
 
   @override
   void initState() {
     super.initState();
     _showCamera = settingsService.getShowCamera();
     _deviceName = settingsService.getDeviceName();
+    _locationAcquisitionEnabled = settingsService.getLocationAcquisitionEnabled();
+    _locationAcquisitionIntervalSeconds = settingsService.getLocationAcquisitionIntervalSeconds();
     // Keep the screen on while the app is running
     WakelockPlus.enable();
+
+    _startLocationTimer();
   }
 
   @override
   void dispose() {
+    _locationTimer?.cancel();
     // Allow screen to lock again when the app is disposed
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  void _startLocationTimer() {
+    _locationTimer?.cancel();
+    if (!_locationAcquisitionEnabled) {
+      return;
+    }
+
+    _locationTimer = Timer.periodic(
+      Duration(seconds: _locationAcquisitionIntervalSeconds),
+      (timer) async {
+        try {
+          final sentence = await _locationService.getCurrentRmcSentence();
+          mqttInterface.sendStringData("Logger/GPRMC", "", sentence);
+        } catch (error) {
+          // Ignore location acquisition failures and keep the timer alive.
+        }
+      },
+    );
   }
   
   void _refreshDeviceName() {
@@ -99,6 +132,14 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _refreshLocationSettings() {
+    setState(() {
+      _locationAcquisitionEnabled = settingsService.getLocationAcquisitionEnabled();
+      _locationAcquisitionIntervalSeconds = settingsService.getLocationAcquisitionIntervalSeconds();
+    });
+    _startLocationTimer();
+  }
+
   Future<void> _openSettings() async {
     final result = await showDialog<bool>(
       context: context,
@@ -111,6 +152,7 @@ class _HomePageState extends State<HomePage> {
 
     _refreshDeviceName();
     _refreshCameraSetting();
+    _refreshLocationSettings();
 
     if (result == true) {
       mqttInterface.reconnect();
@@ -512,7 +554,7 @@ class ObsButton extends StatelessWidget {
 
   void _onPressed() {
     print('Button $title pressed');
-    mqttInterface.sendData('LoggerButton',   title);
+    mqttInterface.sendData('Logger/Button',   title);
   }
 
   @override

@@ -20,6 +20,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController _portController;
   late bool _showCamera;
   late bool _captureAudio;
+  late bool _locationAcquisitionEnabled;
+  late TextEditingController _locationIntervalController;
 
   @override
   void initState() {
@@ -33,6 +35,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
     _showCamera = widget.settingsService.getShowCamera();
     _captureAudio = widget.settingsService.getCaptureAudio();
+    _locationAcquisitionEnabled = widget.settingsService.getLocationAcquisitionEnabled();
+    _locationIntervalController = TextEditingController(
+      text: widget.settingsService.getLocationAcquisitionIntervalSeconds().toString(),
+    );
   }
 
 
@@ -41,6 +47,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _nameController.dispose();
     _ipController.dispose();
     _portController.dispose();
+    _locationIntervalController.dispose();
     super.dispose();
   }
 
@@ -60,12 +67,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
       return;
     }
 
+    final intervalValue = int.tryParse(_locationIntervalController.text);
+    if (intervalValue == null || intervalValue < 1 || intervalValue > 300) {
+      _showErrorDialog('Invalid Interval',
+          'Location interval must be a number between 1 and 300 seconds.');
+      return;
+    }
+
     // Save settings
     await widget.settingsService.setDeviceName(_nameController.text);
     await widget.settingsService.setIpAddress(_ipController.text);
     await widget.settingsService.setPort(portValue);
     await widget.settingsService.setShowCamera(_showCamera);
     await widget.settingsService.setCaptureAudio(_captureAudio);
+    await widget.settingsService.setLocationAcquisitionEnabled(_locationAcquisitionEnabled);
+    await widget.settingsService.setLocationAcquisitionIntervalSeconds(intervalValue);
     if (mounted) {
       Navigator.pop(context, true);
       _showSuccessSnackBar('Settings saved successfully');
@@ -117,6 +133,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         _portController.text = widget.settingsService.getPort().toString();
         _showCamera = widget.settingsService.getShowCamera();
         _captureAudio = widget.settingsService.getCaptureAudio();
+        _locationAcquisitionEnabled = widget.settingsService.getLocationAcquisitionEnabled();
+        _locationIntervalController.text = widget.settingsService.getLocationAcquisitionIntervalSeconds().toString();
         _showSuccessSnackBar('Settings reset to defaults');
       }
     }
@@ -269,6 +287,36 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 subtitle: const Text('Record audio and send to base station'),
                 value: _captureAudio,
                 onChanged: (value) => setState(() => _captureAudio = value),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Acquire Location'),
+                subtitle: const Text('Send periodic NMEA RMC position updates'),
+                value: _locationAcquisitionEnabled,
+                onChanged: (value) => setState(() => _locationAcquisitionEnabled = value),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Location Interval (seconds)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _locationIntervalController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: '5',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
 

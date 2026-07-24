@@ -184,9 +184,9 @@ class MQTTNetProt {
     // client.subscribe(topic, MqttQos.atMostOnce);
 
     // set up a 'hello' time to send to tbe broker every 30 seconds to keep the connection alive and to let the broker know we are still here
-    sendStringData('Hello/Logger', "", settingsService.getDeviceName());
+    sendStringData('Logger/Hello', '', settingsService.getDeviceName());
     Timer.periodic (const Duration(seconds: 30), (timer) {
-      sendStringData('Hello/Logger', "", settingsService.getDeviceName());
+      sendStringData('Logger/Hello', '', settingsService.getDeviceName());
     });
 
     /// If needed you can listen for published messages that have completed the publishing

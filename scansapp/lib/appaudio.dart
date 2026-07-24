@@ -49,7 +49,7 @@ class LoggerAudio {
       // Send the audio data to the base station
       // print('Audio data sent: ${data.length} bytes is ${data.buffer.lengthInBytes}');
       var goodData = data.sublist(0, data.lengthInBytes);
-      mqttInterface.sendData("AudioData", "", goodData.buffer);
+      mqttInterface.sendData("Logger/AudioData", '', goodData.buffer);
     });
   }
 
