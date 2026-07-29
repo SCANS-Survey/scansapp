@@ -112,7 +112,7 @@ class _HomePageState extends State<HomePage> {
       (timer) async {
         try {
           final sentence = await _locationService.getCurrentRmcSentence();
-          mqttInterface.sendStringData("Logger/GPRMC", "", sentence);
+          mqttInterface.sendStringData("Logger/NMEA", "", sentence);
         } catch (error) {
           // Ignore location acquisition failures and keep the timer alive.
         }
