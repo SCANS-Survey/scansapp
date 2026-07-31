@@ -79,6 +79,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _locationTimer;
   bool _locationAcquisitionEnabled = false;
   int _locationAcquisitionIntervalSeconds = 5;
+  int _locationTimerGeneration = 0;
 
   @override
   void initState() {
@@ -107,17 +108,39 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    _locationTimer = Timer.periodic(
-      Duration(seconds: _locationAcquisitionIntervalSeconds),
-      (timer) async {
-        try {
-          final sentence = await _locationService.getCurrentRmcSentence();
-          mqttInterface.sendStringData("Logger/NMEA", "", sentence);
-        } catch (error) {
-          // Ignore location acquisition failures and keep the timer alive.
-        }
-      },
-    );
+    final generation = ++_locationTimerGeneration;
+
+    void scheduleNext() {
+      if (!mounted || generation != _locationTimerGeneration || !_locationAcquisitionEnabled) {
+        return;
+      }
+
+      _locationTimer = Timer(
+        Duration(seconds: _locationAcquisitionIntervalSeconds),
+        () async {
+          try {
+            if (!mounted || generation != _locationTimerGeneration || !_locationAcquisitionEnabled) {
+              return;
+            }
+
+            final sentence = await _locationService.getCurrentRmcSentence();
+            if (!mounted || generation != _locationTimerGeneration || !_locationAcquisitionEnabled) {
+              return;
+            }
+
+            mqttInterface.sendStringData("Logger/NMEA", "", sentence);
+          } catch (error) {
+            // Ignore location acquisition failures and keep the timer alive.
+          } finally {
+            if (mounted && generation == _locationTimerGeneration && _locationAcquisitionEnabled) {
+              scheduleNext();
+            }
+          }
+        },
+      );
+    }
+
+    scheduleNext();
   }
   
   void _refreshDeviceName() {
@@ -168,7 +191,7 @@ class _HomePageState extends State<HomePage> {
       // pngBytes now contains the encoded PNG in memory.
       // Use pngBytes for transmission, upload, or further processing.
       final pngbytes = pngBytes.buffer;
-      mqttInterface.sendData('CameraFrame', '', pngbytes);
+      mqttInterface.sendData('Logger/CameraFrame', '', pngbytes);
     } catch (e, st) {
       debugPrint('Failed to encode camera frame to PNG: $e\n$st');
     }
