@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:typed_data';
 
+import 'package:battery_plus/battery_plus.dart';
 import 'settings_service.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
@@ -23,6 +24,7 @@ class MQTTNetProt {
   var countTopic;
   var recordTopic;
 
+  final Battery _battery = Battery();
   SettingsService settingsService;
   StreamSubscription<List<MqttReceivedMessage<MqttMessage?>>>? _updatesSubscription;
 
@@ -183,10 +185,12 @@ class MQTTNetProt {
     // const topic = 'test/lol'; // Not a wildcard topic
     // client.subscribe(topic, MqttQos.atMostOnce);
 
-    // set up a 'hello' time to send to tbe broker every 30 seconds to keep the connection alive and to let the broker know we are still here
+    // set up a 'hello' time to send to the broker every 30 seconds to keep the connection alive and to let the broker know we are still here
     sendStringData('Logger/Hello', '', settingsService.getDeviceName());
-    Timer.periodic (const Duration(seconds: 30), (timer) {
+    _sendBatteryStatus();
+    Timer.periodic(const Duration(seconds: 30), (timer) {
       sendStringData('Logger/Hello', '', settingsService.getDeviceName());
+      _sendBatteryStatus();
     });
 
     /// If needed you can listen for published messages that have completed the publishing
@@ -345,6 +349,15 @@ class MQTTNetProt {
     }
 
     return;
+  }
+
+  Future<void> _sendBatteryStatus() async {
+    try {
+      final int batteryLevel = await _battery.batteryLevel;
+      sendStringData('Logger/Battery', '', batteryLevel.toString());
+    } catch (e) {
+      print('Failed to publish battery status: $e');
+    }
   }
 
   // bool sendData(String topic, String message) {
