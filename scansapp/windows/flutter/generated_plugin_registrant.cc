@@ -7,12 +7,15 @@
 #include "generated_plugin_registrant.h"
 
 #include <battery_plus/battery_plus_windows_plugin.h>
+#include <gamepads_windows/gamepads_windows_plugin_c_api.h>
 #include <geolocator_windows/geolocator_windows.h>
 #include <record_windows/record_windows_plugin_c_api.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   BatteryPlusWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("BatteryPlusWindowsPlugin"));
+  GamepadsWindowsPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("GamepadsWindowsPluginCApi"));
   GeolocatorWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("GeolocatorWindows"));
   RecordWindowsPluginCApiRegisterWithRegistrar(

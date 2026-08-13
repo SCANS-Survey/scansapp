@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gamepads/gamepads.dart';
 import 'package:image/image.dart' as img;
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:mqtt_client/mqtt_client.dart';
@@ -14,12 +15,25 @@ import 'settings_dialog.dart';
 import 'settings_service.dart';
 import 'appaudio.dart';
 import 'location.dart';
+import 'game_controller.dart';
 
-// import 'udpprot.dart';
-
-// var netInterface = UDPNetwork();
 final settingsService = SettingsService();
 final mqttInterface = MQTTNetProt(settingsService);
+final GameControllerMonitor monitor = GameControllerMonitor(
+  callback: (buttonName) {
+    switch (buttonName) {
+      case 'L1':
+        mqttInterface.sendData('Logger/Button', 'Sighting');
+        break;
+      case 'R1':
+        mqttInterface.sendData('Logger/Button', 'Resighting');
+        break;
+      default:
+        break;
+    }
+  },
+);
+final streamController = StreamController<String>.broadcast();
 final LoggerAudio loggerAudio = LoggerAudio(settingsService: settingsService, mqttInterface: mqttInterface);
 
 Future<void> main() async {
@@ -45,10 +59,18 @@ Future<void> main() async {
 
   loggerAudio.startAudioCapture(); // Start audio capture if enabled
 
+  Gamepads.normalizedEvents.listen((event) {
+    if (event.button == GamepadButton.leftBumper && event.value > 0.0) {
+      monitor.receiveMessage('L1');
+    }
+    if (event.button == GamepadButton.rightBumper && event.value > 0.0) {
+      monitor.receiveMessage('R1');
+    }
+  });
 
-
- runApp(MainApp(cameras: cameras));
+  runApp(MainApp(cameras: cameras));
 }
+
 
 class MainApp extends StatelessWidget {
   final List<CameraDescription> cameras;
@@ -61,6 +83,7 @@ class MainApp extends StatelessWidget {
       home: HomePage(cameras: cameras),
     );
   }
+
 }
 
 class HomePage extends StatefulWidget {
