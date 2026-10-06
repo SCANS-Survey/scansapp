@@ -23,6 +23,7 @@ class MQTTNetProt {
 
   var countTopic;
   var recordTopic;
+  var drVoiceTopic;
 
   final Battery _battery = Battery();
   SettingsService settingsService;
@@ -35,6 +36,8 @@ class MQTTNetProt {
   // Notifier for the counter topic payload so UI can display it
   final ValueNotifier<String> counterValue = ValueNotifier<String>('');
   final ValueNotifier<String> recordingState = ValueNotifier<String>('');
+  void Function(Uint8List audioData)? onDRVoice;
+
 
   MQTTNetProt(this.settingsService);
 
@@ -254,6 +257,10 @@ class MQTTNetProt {
     return 'Logger/LoggerCounter/${settingsService.getPlatform()}';
   }
 
+  String getDRVoiceTopic() {
+    return 'Logger/DRVoice/${settingsService.getDeviceName()}';
+  }
+
   void _resubscribeTopics() {
     if (client == null) {
       return;
@@ -261,10 +268,11 @@ class MQTTNetProt {
 
     countTopic = getCounterTopic();
     recordTopic = getRecordTopic();
-
+    drVoiceTopic = getDRVoiceTopic();
     try {
       client.subscribe(countTopic, MqttQos.atLeastOnce);
       client.subscribe(recordTopic, MqttQos.atLeastOnce);
+      client.subscribe(drVoiceTopic, MqttQos.atLeastOnce);
     } catch (e) {
       print('Failed to resubscribe MQTT topics: $e');
     }
@@ -301,6 +309,10 @@ class MQTTNetProt {
       );
       recordingState.value = pt;
       // print('EXAMPLE::Recording notification:: topic is <${message.topic}>, payload is <-- $pt -->');
+      return;
+    }
+    else if (message.topic == getDRVoiceTopic()) {
+      onDRVoice?.call(Uint8List.fromList(recMess.payload.message));
       return;
     }
     else {

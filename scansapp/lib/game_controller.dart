@@ -26,7 +26,7 @@ class GameControllerMonitor {
   }
 
   void receiveMessage(String message) {
-    print('Game controller message received: $message');
+    //print('Game controller message received: $message');
     final button = _normalizeButton(message);
     if (button.isEmpty) {
       return;

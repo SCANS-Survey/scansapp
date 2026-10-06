@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'settings_service.dart';
 import 'package:record/record.dart';
+import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'mqttprot.dart';
 
 final recorder = AudioRecorder();
@@ -26,7 +28,47 @@ class LoggerAudio {
 
   final MQTTNetProt mqttInterface;
 
-  LoggerAudio({required this.settingsService, required this.mqttInterface});
+  Future<void>? _playbackSetup;
+  Future<void> _playbackQueue = Future<void>.value();
+  int? _pendingAudioByte;
+
+  LoggerAudio({required this.settingsService, required this.mqttInterface}) {
+    mqttInterface.onDRVoice = playReceivedAudio;
+  }
+
+  void playReceivedAudio(Uint8List audioData) {
+    if (audioData.isEmpty) return;
+
+    final pendingByte = _pendingAudioByte;
+    final combinedData = Uint8List(audioData.length + (pendingByte == null ? 0 : 1));
+    var dataOffset = 0;
+    if (pendingByte != null) {
+      combinedData[0] = pendingByte;
+      dataOffset = 1;
+    }
+    combinedData.setRange(dataOffset, combinedData.length, audioData);
+
+    final completeByteCount = combinedData.length & ~1;
+    _pendingAudioByte = completeByteCount < combinedData.length
+        ? combinedData.last
+        : null;
+    if (completeByteCount == 0) return;
+
+    final pcmBytes = Uint8List.sublistView(combinedData, 0, completeByteCount);
+    final pcm = PcmArrayInt16(bytes: ByteData.sublistView(pcmBytes));
+    _playbackQueue = _playbackQueue
+        .then((_) async {
+          _playbackSetup ??= FlutterPcmSound.setup(
+            sampleRate: sampleRate,
+            channelCount: nChannels,
+          );
+          await _playbackSetup;
+          await FlutterPcmSound.feed(pcm);
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          print('Failed to play received audio: $error');
+        });
+  }
 
   // Placeholder for audio capture and sending logic
   Future<void> startAudioCapture() async {

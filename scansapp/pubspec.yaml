@@ -20,6 +20,7 @@ dependencies:
   geolocator: ^13.0.1
   battery_plus: ^7.1.1
   gamepads: ^0.1.10+5
+  flutter_pcm_sound: ^3.3.3
 
 dev_dependencies:
   flutter_test:
